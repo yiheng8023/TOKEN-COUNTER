@@ -1,17 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "TOKEN-COUNTER", 
+  "name": "TOKEN-COUNTER",
   "version": "1.0",
-  "description": "A world-class, open-source token counter.", 
+  "description": "A world-class, open-source token counter.",
   "permissions": [
     "sidePanel",
     "storage",
     "activeTab",
     "scripting",
     "offscreen"
-  ],
-  "host_permissions": [
-    "https://raw.githubusercontent.com/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -31,6 +28,6 @@
     "default_path": "src/ui/side-panel.html"
   },
   "action": {
-    "default_title": "TOKEN-COUNTER" 
+    "default_title": "TOKEN-COUNTER"
   }
 }

@@ -2,37 +2,31 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
-// V18 最终版: 真正"世界级"的多入口配置
+// V93 最终版: 解决 "You must supply options.input" 错误
 export default defineConfig({
-  plugins: [react()],
-  // 关键: publicDir (V14) 仍然是正确的，它负责复制 manifest.json
+  plugins: [
+    react()
+  ],
   publicDir: 'public',
   
   build: {
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
-      // 关键: 我们有 3 个独立的入口
+      // 关键 (V93 修复): 核心库 core.ts 应该被 *其他入口文件* 导入，
+      // 而不是作为独立的 input。
       input: {
-        // 1. HTML 入口
-        // Vite 会自动处理这个 HTML，并将其复制到 dist/side-panel.html
         'side-panel': resolve(__dirname, 'src/ui/side-panel.html'),
-        
-        // 2. JS 入口 (后台)
+        'offscreen': resolve(__dirname, 'src/engine/offscreen.html'), 
         background: resolve(__dirname, 'src/background/index.ts'),
-        
-        // 3. JS 入口 (内容)
         content: resolve(__dirname, 'src/content/index.ts'),
       },
       output: {
-        // 关键: 我们只为 JS 入口 (background, content)
-        // 自定义名称。我们让 Vite 自动处理 HTML。
         entryFileNames: (chunkInfo) => {
-          // 对 'background' 和 'content' 入口使用 [name].js
           if (chunkInfo.name === 'background' || chunkInfo.name === 'content') {
-            return '[name].js'; // -> dist/background.js, dist/content.js
+            return '[name].js';
           }
-          // 让 Vite 默认处理 'side-panel' 的 JS (e.g., dist/assets/index-XXXX.js)
+          // 让所有核心逻辑 (包括 core.ts 及其导入的 JSON) 打包到 chunks 中
           return 'assets/[name]-[hash].js';
         },
         chunkFileNames: 'assets/[name]-[hash].js',
