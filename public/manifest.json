@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_extensionName__",
+  "version": "1.0",
+  "description": "__MSG_extensionDescription__",
+  "default_locale": "zh_CN",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "activeTab",
+    "scripting",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "https://raw.githubusercontent.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "httpsAddress://gemini.google.com/*"
+      ],
+      "js": [
+        "src/content/index.ts"
+      ]
+    }
+  ],
+  "side_panel": {
+    "default_path": "src/ui/side-panel.html"
+  },
+  "action": {
+    "default_title": "__MSG_extensionName__",
+    "default_icon": "assets/icon-32.png"
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  }
+}
