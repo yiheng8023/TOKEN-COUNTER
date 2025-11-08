@@ -1,73 +1,29 @@
-# React + TypeScript + Vite
+# TOKEN-COUNTER
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A world-class, open-source, 100% local-first token counter for Large Language Models. Built for privacy, performance, and precision.
 
-Currently, two official plugins are available:
+[查看中文版说明 (View Chinese README)](./README.zh.md)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🌟 Features
 
-## React Compiler
+* **100% Local & Private:** Your text, conversations, and data never leave your browser.
+* **Precision Engine:** Utilizes `@xenova/transformers.js` to run the official Gemma tokenizer directly in your browser for maximum accuracy.
+* **Robust & Resilient (Req 7):** Dynamically fetches DOM configurations to adapt to official UI changes (like Gemini's) without needing a full extension update.
+* **Extensible (Req 5):** Architected for the community. Adding support for new models (like GPT-4, Claude) is straightforward.
+* **Pure & Fast:** No ads, no tracking, no user accounts. Just a clean, fast, "world-class" (Req 3) tool.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🚀 Getting Started (For Developers)
 
-## Expanding the ESLint configuration
+This project is built with Vite, React, TypeScript, and Manifest V3.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 1. Installation
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+```bash
+# Clone the repository
+git clone [https://github.com/yiheng8023/TOKEN-COUNTER.git](https://github.com/yiheng8023/TOKEN-COUNTER.git)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+# Navigate into the project directory
+cd TOKEN-COUNTER
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+# Install dependencies
+npm install

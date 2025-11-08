@@ -1,9 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "__MSG_extensionName__",
+  "name": "TOKEN-COUNTER", 
   "version": "1.0",
-  "description": "__MSG_extensionDescription__",
-  "default_locale": "zh_CN",
+  "description": "A world-class, open-source token counter.", 
   "permissions": [
     "sidePanel",
     "storage",
@@ -15,16 +14,16 @@
     "https://raw.githubusercontent.com/*"
   ],
   "background": {
-    "service_worker": "src/background/index.ts",
+    "service_worker": "background.js",
     "type": "module"
   },
   "content_scripts": [
     {
       "matches": [
-        "httpsAddress://gemini.google.com/*"
+        "https://gemini.google.com/*"
       ],
       "js": [
-        "src/content/index.ts"
+        "content.js"
       ]
     }
   ],
@@ -32,13 +31,6 @@
     "default_path": "src/ui/side-panel.html"
   },
   "action": {
-    "default_title": "__MSG_extensionName__",
-    "default_icon": "assets/icon-32.png"
-  },
-  "icons": {
-    "16": "assets/icon-16.png",
-    "32": "assets/icon-32.png",
-    "48": "assets/icon-48.png",
-    "128": "assets/icon-128.png"
+    "default_title": "TOKEN-COUNTER" 
   }
 }

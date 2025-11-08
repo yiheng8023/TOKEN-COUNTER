@@ -1,0 +1,1 @@
+console.log('TOKEN-COUNTER Content Script (v1.0) is loaded.');
