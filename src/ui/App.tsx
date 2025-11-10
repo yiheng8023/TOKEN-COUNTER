@@ -1,4 +1,4 @@
-// src/ui/App.tsx (V151: 修复主题自适应、文本赘述和 V148 语法错误)
+// src/ui/App.tsx (V155: 修复 R1 致命数学逻辑 & 移除 R2/R7 'Thought')
 import { useState, useEffect } from 'react';
 import * as Rules from '../config/model_rules.json'; 
 
@@ -16,24 +16,25 @@ enum MessageType {
 
 // 导入规则和默认值
 const MODEL_RULES = Rules.MODELS as Record<string, { MAX_TOKENS: number, ALERT_THRESHOLD: number }>;
-const COST_RULES = Rules.COST_RULES as { THOUGHT_COST_PER_TURN: number, FILE_COST_PER_UNIT: number };
+// V155 (R2) 修复: 'THOUGHT_COST_PER_TURN' 已弃用
+const COST_RULES = Rules.COST_RULES as { FILE_COST_PER_UNIT: number };
 const DEFAULT_MODEL_NAME = Rules.DEFAULT_MODEL_NAME;
 
 const getMessage = (key: string) => {
     if (key === 'labelText') return (typeof chrome !== 'undefined' && chrome.i18n.getMessage(key)) || '文本';
     return typeof chrome !== 'undefined' && chrome.i18n ? chrome.i18n.getMessage(key) : `[${key}]`;
 };
+
+// V155 (R7) 修复: 从状态中移除 'thought'
 interface TokenState {
     total: number;
     text: number;
     file: number;
-    thought: number;
 }
 const initialState: TokenState = {
     total: 0,
     text: 0,
     file: 0,
-    thought: 0,
 };
 
 function App() {
@@ -42,7 +43,7 @@ function App() {
     const [status, setStatus] = useState<string>(''); 
     
     // V167: 实现主题自适应逻辑
-    const [isDark, setIsDark] = useState(true); // 默认值不重要，useEffect 会立即覆盖它
+    const [isDark, setIsDark] = useState(true); 
     
     // V175 修复: 模型自适应 - 查找最匹配的规则
     const currentModelRules = (() => {
@@ -107,27 +108,30 @@ function App() {
                 setModelName(message.modelName);
             }
             
-            // 2. 处理文件/思考计数的更新 
+            // 2. V155 (R2/R7) 修复: 仅处理文件计数 
             if (message.type === MessageType.UPDATE_UI_COUNTERS) {
-                const calculatedThought = message.thoughtTurns * COST_RULES.THOUGHT_COST_PER_TURN; 
+                // V155 (R2) 修复: 'thoughtTurns' 已被移除
                 const calculatedFile = message.fileCount * COST_RULES.FILE_COST_PER_UNIT;       
 
                 setTokens(prev => ({
                     ...prev,
-                    thought: calculatedThought,
                     file: calculatedFile,
-                    total: prev.text + calculatedThought + calculatedFile,
+                    // V155 (R1) 修复: 总计 = 现有的文本 + 新的文件
+                    total: prev.text + calculatedFile, 
                 }));
             }
 
-            // 3. 处理文本 Token 更新 (来自 Background/Offscreen)
+            // 3. V155 (R1) 致命逻辑修复 (Bug B):
             if (message.type === MessageType.UPDATE_UI_TOKENS) {
-                const newTextTotal = message.totalTokens;
+                // 'message.totalTokens' 实际上 *仅仅是* 'text' 的 Token 计数
+                const newTextTotal = message.totalTokens; 
                 
                 setTokens(prev => ({
                     ...prev,
-                    text: newTextTotal - prev.file - prev.thought, 
-                    total: newTextTotal, 
+                    // V155 (R1) 修复: 文本 = 传入的文本计数
+                    text: newTextTotal, 
+                    // V155 (R1) 修复: 总计 = 新的文本 + 现有的文件
+                    total: newTextTotal + prev.file, 
                 }));
             }
 
@@ -141,7 +145,7 @@ function App() {
         return () => {
             chrome.runtime.onMessage.removeListener(messageHandler);
         };
-    }, [modelName]); 
+    }, [modelName]); // V155 修复: 此处依赖项 [modelName] 是正确的，无需更改
     
     const handleSettingsClick = () => {
         // R5 (需求 #8) 修复: 移除 "cdn" 字样
@@ -189,8 +193,7 @@ function App() {
                 {renderCountRow(getMessage('labelText'), tokens.text)}
                 {renderCountRow(getMessage('labelFile'), tokens.file)}
                 
-                {/* V148 (语法修复): 修复了 V147 的 : 拼写错误 */}
-                {renderCountRow(getMessage('labelThought'), tokens.thought)}
+                {/* V155 (R7) 修复: 已移除 'labelThought' 行 */}
                 
                 {/* V175 修复: 集中总计显示，并应用告警色 */}
                 <div style={{ marginTop: '10px', borderTop: `1px solid ${isDark ? '#444' : '#ccc'}`, paddingTop: '8px' }}>

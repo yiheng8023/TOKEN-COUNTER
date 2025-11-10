@@ -20,9 +20,6 @@
     "labelFile": {
         "message": "File (?)"
     },
-    "labelThought": {
-        "message": "Thought (?)"
-    },
     "statusWaiting": {
         "message": "Awaiting page activity..."
     }

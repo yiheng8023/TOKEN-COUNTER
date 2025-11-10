@@ -20,9 +20,6 @@
     "labelFile": {
         "message": "文件 (?)"
     },
-    "labelThought": {
-        "message": "思考 (?)"
-    },
     "statusWaiting": {
         "message": "等待页面活动..."
     }
