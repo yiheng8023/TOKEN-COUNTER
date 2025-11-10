@@ -1,17 +1,18 @@
-// src/engine/core.ts (V122 "黄金"版 - 100% 修复精度)
+// src/engine/index.ts (V113 "黄金"版 - 100% 修复路径)
 import { PreTrainedTokenizer } from '@xenova/transformers';
 
 // -----------------------------------------------------------------------------
-// "世界级"的 V122 "Vite 导入"
+// "世界级"的 V113 "Vite 导入"
 // -----------------------------------------------------------------------------
-import tokenizerJson from './models/tokenizer.json';
-import tokenizerConfig from './models/tokenizer_config.json'; 
-import specialTokens from './models/special_tokens_map.json'; 
+// 关键 (V113): 路径现在是正确的: "./models/gemini/..."
+import tokenizerJson from './models/gemini/tokenizer.json';
+import tokenizerConfig from './models/gemini/tokenizer_config.json'; 
+import specialTokens from './models/gemini/special_tokens_map.json'; 
 // -----------------------------------------------------------------------------
 
 
 /**
- * "世界级"的 V122 单例模式 (100% 离线)
+ * "世界级"的 V113 单例模式 (100% 离线)
  */
 class TokenizerEngine {
   private static instance: PreTrainedTokenizer | null = null;
@@ -23,36 +24,36 @@ class TokenizerEngine {
     if (this.instance) {
       return this.instance;
     }
-    
-    let tokenizer: PreTrainedTokenizer; 
 
     try {
-      console.log('TokenizerEngine (V122): 正在 "Offscreen" 中 "手动" new (接收)...');
+      console.log('TokenizerEngine (V113): MANUAL IMPORT SUCCESSFUL.');
       
-      tokenizer = new PreTrainedTokenizer(tokenizerJson, tokenizerConfig);
+      const tokenizer = new PreTrainedTokenizer(tokenizerJson, tokenizerConfig);
       
       if (specialTokens) {
         tokenizer.special_tokens = specialTokens;
       }
 
       this.instance = tokenizer;
-      console.log('TokenizerEngine (V122): "Offscreen" "手动" new 成功。');
+      console.log('TokenizerEngine (V113): TOKENIZER INSTANCE CREATED.');
       return this.instance;
       
     } catch (e) {
-      console.error('TokenizerEngine (V122): "Offscreen" "手动" new 失败!', e);
-      throw e; 
+      console.error('TokenizerEngine (V113): FAILED TO INIT.', e);
+      throw e;
     }
   }
 
+  /**
+   * 核心功能 (Req 2): 精确计算
+   */
   public static async calculateTokens(text: string): Promise<number> {
-    const tokenizer = await this.getInstance() as PreTrainedTokenizer; 
-    
     try {
+      const tokenizer = await this.getInstance();
       const tokens = tokenizer.encode(text);
       return tokens.length;
     } catch (e) {
-      console.error('TokenizerEngine (V122): 计算失败!', e);
+      console.error('TokenizerEngine (V113): 计算失败!', e);
       return 0;
     }
   }

@@ -1,101 +1,80 @@
-// src/content/index.ts (V119: 修复代码洁癖)
+// src/content/index.ts (V145: 修复导入错误 - 重新定义 MessageType 和 debounce 以解决模块解析问题)
 
-console.log('TOKEN-COUNTER Content Script (V119) is loaded on Gemini.');
+console.log('TOKEN-COUNTER Content Script (V145) is active.'); // 更新版本号
 
-// ============== 配置和常量 (Req 7: 健壮性) ==============
+/**
+ * 消息类型枚举 (Content Script 独立定义以避免模块解析错误)
+ * 仅包含 Content Script 需要用到的 MessageTypes
+ */
+enum MessageType {
+    BG_CALCULATE_TOKENS = 'BG_CALCULATE_TOKENS',
+    UPDATE_UI_TOKENS = 'UPDATE_UI_TOKENS',
+    UPDATE_UI_COUNTERS = 'UPDATE_UI_COUNTERS',
+    UPDATE_UI_MODEL = 'UPDATE_UI_MODEL',
+    UPDATE_UI_STATUS = 'UPDATE_UI_STATUS',
+    // UI Request: 确保 Content Script 知道这个类型
+    REQUEST_INITIAL_STATE = 'REQUEST_INITIAL_STATE', 
+}
 
-// 定义用于抓取关键文本的 DOM 选择器。
-const SELECTORS = {
-    // 假设用户输入区域有一个独特的 data-testid 或 class
-    INPUT_AREA: '[aria-label="Send a message"]', 
+/**
+ * 防抖函数 (Content Script 独立定义以避免模块解析错误)
+ */
+function debounce<T extends (...args: any[]) => void>(func: T, timeout = 300): (...args: Parameters<T>) => void {
+    let timer: number | undefined; 
     
-    // 聊天回复容器，通常是一个包含所有消息的父级 div
-    CHAT_CONTAINER: 'main > div > div > div:last-child', 
+    return (...args: Parameters<T>) => {
+        if (timer) {
+            clearTimeout(timer); 
+        }
+        timer = window.setTimeout(() => {
+            func(...args);
+        }, timeout);
+    };
+}
+
+
+/**
+ * 引擎映射表：根据 host 动态加载对应的 engine.ts
+ */
+const ENGINE_MAP = {
+    // V145: 导入时不再使用相对路径，而是使用 Content Script 自身的路径
+    'gemini.google.com': () => import('./engines/gemini/index'), 
 };
 
-// ============== 通信函数 ==============
+const currentHost = window.location.host;
 
 /**
- * 将文本发送给后台 Service Worker (SW) 进行 Token 计算。
+ * 动态加载 Content Script Engine。
  */
-async function sendTextToCalculate(text: string): Promise<number> {
-    if (!text || text.trim() === '') return 0;
-
-    try {
-        const response = await chrome.runtime.sendMessage({
-            type: 'BG_CALCULATE_TOKENS',
-            text: text,
-        });
-        return response?.tokenCount || 0;
-    } catch (e) {
-        // 静默处理，因为 Side Panel 或 SW 未运行，通信会失败
-        return 0;
-    }
-}
-
-// ============== 核心抓取逻辑 ==============
-
-// V119 修复：将 latestTokens 移到函数外部，以便在多次调用中保持状态
-let latestTokens = 0; 
-
-/**
- * 【核心逻辑】遍历 DOM，抓取所有需要的文本，并计算总 Token。
- */
-function processPageContent() {
-    // 1. 抓取用户输入
-    const inputElement = document.querySelector(SELECTORS.INPUT_AREA) as HTMLTextAreaElement;
-    const inputText = inputElement?.value || '';
+async function loadEngine() {
+    const loader = ENGINE_MAP[currentHost as keyof typeof ENGINE_MAP];
     
-    // 2. 抓取聊天容器内的所有回复文本 (简易模式，抓取所有可见文本)
-    const chatContainer = document.querySelector(SELECTORS.CHAT_CONTAINER);
-    const repliesText = chatContainer?.textContent || '';
-    
-    const totalTextToProcess = inputText + ' ' + repliesText;
-
-    // 3. 计算并更新 Token
-    if (totalTextToProcess.trim().length > 0) {
-        sendTextToCalculate(totalTextToProcess).then(count => {
-            if (count !== latestTokens) {
-                latestTokens = count;
-                
-                // 【V119 关键步骤】：将最新的 Token 数发送给 Side Panel UI
-                chrome.runtime.sendMessage({
-                    type: 'UPDATE_UI_TOKENS',
-                    totalTokens: count
-                }).catch(() => {
-                    // 静默处理，因为 Side Panel 可能没打开
-                });
+    if (loader) {
+        try {
+            console.log(`Content: Initializing engine for host: ${currentHost}`);
+            
+            const module = await loader();
+            if (typeof module.initializeGeminiEngine === 'function') {
+                // V145: 将共享工具函数和类型注入到引擎模块中
+                module.initializeGeminiEngine({ debounce, MessageType }); 
+            } else {
+                 console.error(`Content Script: Engine module is missing initializeGeminiEngine function.`);
             }
-        });
-    }
-}
-
-
-// ============== MutationObserver (Req 7: 健壮性) ==============
-
-// V119 修复：修复 observer 变量和回调参数的未读取警告
-const observer = new MutationObserver((mutationsList, _observer) => {
-    // 简单检查：如果有任何变化，就重新处理页面内容
-    for (const mutation of mutationsList) {
-        if (mutation.type === 'childList' || mutation.type === 'characterData') {
-            processPageContent();
-            return; 
+        } catch (error) {
+            console.error(`Content Script: Failed to load engine for ${currentHost}`, error);
+            // V142 修复: 如果加载失败，通知 UI 等待
+            chrome.runtime.sendMessage({ type: MessageType.UPDATE_UI_STATUS, data: { status: 'statusWaiting' } }).catch(() => {});
         }
-    }
-});
-
-// 核心：在页面加载后，启动观察者
-function initializeObserver() {
-    const chatRoot = document.body; // 从 body 开始观察，确保不漏掉任何元素
-    
-    if (chatRoot) {
-        // 观察 Body 及其所有子树的变化
-        observer.observe(chatRoot, { childList: true, subtree: true, characterData: true });
-        
-        // 首次运行
-        processPageContent();
+    } else {
+        console.log('Content Script: No specific engine found for this host.');
+        // V142 修复: 如果没有匹配的引擎，通知 UI 等待
+        chrome.runtime.sendMessage({ type: MessageType.UPDATE_UI_STATUS, data: { status: 'statusWaiting' } }).catch(() => {});
     }
 }
 
-// 确保页面完全加载后再启动
-window.addEventListener('load', initializeObserver);
+// 立即执行加载
+loadEngine();
+
+// V145 导出 debounce 和 MessageType，供 Content 引擎文件使用
+// 注意: 这种导出只对 Content Script 的子模块有效
+export { debounce, MessageType };

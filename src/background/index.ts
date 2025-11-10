@@ -1,76 +1,133 @@
-// src/background/index.ts (V110 "纯净"版)
+// src/background/index.ts (V154: 修复 R8 架构崩溃 - 修正 "message channel closed" 错误)
 
-console.log('TOKEN-COUNTER Service Worker (V110) is running.');
+/**
+ * 消息类型枚举 (Background Script 独立定义以避免模块解析错误)
+ */
+enum MessageType {
+    BG_CALCULATE_TOKENS = 'BG_CALCULATE_TOKENS',
+    OFFSCREEN_CALCULATE_TOKENS = 'OFFSCREEN_CALCULATE_TOKENS',
+    OFFSCREEN_CALCULATE_TOKENS_RESPONSE = 'OFFSCREEN_CALCULATE_TOKENS_RESPONSE',
+    UPDATE_UI_TOKENS = 'UPDATE_UI_TOKENS',
+    UPDATE_UI_COUNTERS = 'UPDATE_UI_COUNTERS',
+    UPDATE_UI_MODEL = 'UPDATE_UI_MODEL',
+    UPDATE_UI_STATUS = 'UPDATE_UI_STATUS',
+    REQUEST_INITIAL_STATE = 'REQUEST_INITIAL_STATE',
+}
 
 const OFFSCREEN_DOCUMENT_PATH = 'src/engine/offscreen.html';
 
 /**
- * "世界级" (Req 7): 查找或创建 Offscreen 文档
+ * V1E.T. 52 (R8) 修复: 
+ * (此函数已验证可工作，保持不变)
  */
-async function getOrCreateOffscreenDocument(): Promise<boolean> {
-  // 1. 检查是否已存在
-  const existingContexts = await chrome.runtime.getContexts({
-    contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
-    documentUrls: [chrome.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)]
-  });
+async function setupOffscreenDocument() {
+    try {
+        if (!chrome.offscreen) {
+            console.error("TOKEN-COUNTER: chrome.offscreen API 不存在。");
+            return;
+        }
 
-  if (existingContexts.length > 0) {
-    return true;
-  }
+        const hasDoc = await chrome.offscreen.hasDocument();
+        if (hasDoc) {
+            return;
+        }
 
-  // 2. 如果不存在，则创建
-  console.log('Offscreen document 不存在，正在创建...');
-  try {
-    await chrome.offscreen.createDocument({
-      url: OFFSCREEN_DOCUMENT_PATH,
-      reasons: [chrome.offscreen.Reason.IFRAME_SCRIPTING], // V24 修复
-      justification: 'Tokenizer engine requires DOM APIs (not available in SW)',
-    });
-    console.log('Offscreen document 创建成功。');
-    return true;
-  } catch (error) {
-    console.error('Offscreen document 创建失败:', error);
-    return false;
-  }
-}
+        await chrome.offscreen.createDocument({
+            url: OFFSCREEN_DOCUMENT_PATH,
+            reasons: [chrome.offscreen.Reason.IFRAME_SCRIPTING],
+            justification: 'Offload heavy tokenization model from Service Worker.'
+        });
+        // V154: 仅在成功时记录一次
+        console.log("TOKEN-COUNTER: Offscreen Document 已创建。");
 
-/**
- * "世界级" (Req 2): 封装计算请求
- */
-async function requestTokenCalculation(text: string): Promise<number> {
-  // 1. (V110) 确保 Offscreen 引擎正在运行
-  await getOrCreateOffscreenDocument();
-
-  // 2. (V110) 将文本发送到 Offscreen 引擎
-  console.log('Background (V110): 正在向 Offscreen 发送计算请求...');
-  try {
-    const response = await chrome.runtime.sendMessage({
-      type: 'CALCULATE_TOKENS', // 最终消息类型
-      text: text,
-    });
-        
-    if (!response) {
-       throw new Error("Offscreen did not return a response (undefined).");
+    } catch (e: unknown) {
+        console.error("TOKEN-COUNTER: setupOffscreenDocument 失败:", e);
+        throw e; 
     }
-
-    console.log('Background (V110): 收到来自 Offscreen 的响应:', response);
-    return response.tokenCount || 0;
-  } catch (e) {
-    console.error('Background (V110): 与 Offscreen 通信失败。', e);
-    return 0; 
-  }
 }
 
-// -----------------------------------------------------------------------------
-//  SW 消息监听器 (来自 UI)
-// -----------------------------------------------------------------------------
+// V149 修复: 为整个监听器添加顶层 try...catch
+try {
+    // V154 (R8) 致命错误修复: 
+    // 1. 将 addListener 回调设为 'async'。
+    // 2. 移除所有 'return true' 和 'return false'。
+    //
+    // 解释: 'return true' 是一个契约，表示我们会调用 sendResponse()。
+    // 但我们从未调用，导致了 "message channel closed" 崩溃。
+    // 通过将监听器设为 'async' 并移除 'return'，我们告诉 Chrome
+    // 我们会处理消息，但不会回复原始调用者 (这是正确的架构)。
+    // 所有的 sendMessage 调用仍需被 .catch() 捕获 (V153 修复)。
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === 'BG_CALCULATE_TOKENS') {
-    (async () => {
-      const tokenCount = await requestTokenCalculation(message.text);
-      sendResponse({ tokenCount });
-    })();
-    return true; 
-  }
+    chrome.runtime.onMessage.addListener(async (message, _sender, _sendResponse) => { 
+        
+        try {
+            // 1. 监听来自 Content Script 的 Token 计算请求
+            if (message.type === MessageType.BG_CALCULATE_TOKENS) {
+                await setupOffscreenDocument(); 
+                // 转发给 Offscreen Document
+                chrome.runtime.sendMessage({
+                    type: MessageType.OFFSCREEN_CALCULATE_TOKENS, 
+                    text: message.text,
+                }).catch(e => {
+                    // (V153 修复)
+                    console.warn(`TOKEN-COUNTER: 转发 ${message.type} 失败 (Offscreen 就绪?):`, e.message);
+                });
+                return; // V154: 移除 'return true'
+            }
+
+            // 2. 监听来自 Offscreen Document 的 Token 计算结果
+            if (message.type === MessageType.OFFSCREEN_CALCULATE_TOKENS_RESPONSE) {
+                // 转发给 UI (Side Panel)
+                chrome.runtime.sendMessage({
+                    type: MessageType.UPDATE_UI_TOKENS, 
+                    totalTokens: message.tokenCount
+                }).catch(e => {
+                    // (V153 修复)
+                    console.warn(`TOKEN-COUNTER: 转发 ${message.type} 失败 (UI 打开?):`, e.message);
+                });
+                return; // V154: 移除 'return false'
+            }
+
+            // 3. 监听来自 Content Script 的其他 UI 更新消息
+            if (message.type === MessageType.UPDATE_UI_MODEL || 
+                message.type === MessageType.UPDATE_UI_COUNTERS) {
+                // 转发给 UI (Side Panel)
+                chrome.runtime.sendMessage(message).catch(e => {
+                    // (V153 修复)
+                    console.warn(`TOKEN-COUNTER: 转发 ${message.type} 失败 (UI 打开?):`, e.message);
+                });
+                return; // V154: 移除 'return false'
+            }
+
+            // 4. V175: 监听 UI 侧边栏的状态更新
+            if (message.type === MessageType.UPDATE_UI_STATUS) {
+                // 转发给 UI (Side Panel)
+                chrome.runtime.sendMessage(message).catch(e => {
+                    // (V153 修复)
+                    console.warn(`TOKEN-COUNTER: 转发 ${message.type} 失败:`, e.message);
+                });
+                return; // V154: 移除 'return false'
+            }
+
+            // 5. 监听来自 UI 的请求初始状态
+            if (message.type === MessageType.REQUEST_INITIAL_STATE) {
+                await setupOffscreenDocument();
+                return; // V154: 移除 'return true'
+            }
+
+        } catch (e: unknown) {
+             console.error("TOKEN-COUNTER: onMessage 监听器内部错误:", e);
+        }
+    });
+} catch (e: unknown) {
+     console.error("TOKEN-COUNTER: 无法设置 onMessage 监听器:", e);
+}
+
+
+// V151 (R8) 修复: 
+// (此函数已验证可工作，保持不变)
+chrome.runtime.onStartup.addListener(() => {
+    setupOffscreenDocument().catch(e => {
+        console.error("TOKEN-COUNTER: onStartup 预热失败 (已捕获):", e);
+    });
 });

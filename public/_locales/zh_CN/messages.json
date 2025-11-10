@@ -1,0 +1,29 @@
+{
+    "extensionName": {
+        "message": "通用 Token 计数器"
+    },
+    "extensionDescription": {
+        "message": "世界级、私密、离线的通用 Token 计算工具。"
+    },
+    "statusReady": {
+        "message": "就绪"
+    },
+    "statusCalculating": {
+        "message": "计算中..."
+    },
+    "labelTotal": {
+        "message": "计算总计"
+    },
+    "labelText": {
+        "message": "文本"
+    },
+    "labelFile": {
+        "message": "文件 (?)"
+    },
+    "labelThought": {
+        "message": "思考 (?)"
+    },
+    "statusWaiting": {
+        "message": "等待页面活动..."
+    }
+}

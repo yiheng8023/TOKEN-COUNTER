@@ -1,0 +1,29 @@
+{
+    "extensionName": {
+        "message": "Universal Token Counter"
+    },
+    "extensionDescription": {
+        "message": "World-class, private, and offline universal Token calculation tool."
+    },
+    "statusReady": {
+        "message": "Ready"
+    },
+    "statusCalculating": {
+        "message": "Calculating..."
+    },
+    "labelTotal": {
+        "message": "TOTAL COUNT"
+    },
+    "labelText": {
+        "message": "Text (Precise)"
+    },
+    "labelFile": {
+        "message": "File (?)"
+    },
+    "labelThought": {
+        "message": "Thought (?)"
+    },
+    "statusWaiting": {
+        "message": "Awaiting page activity..."
+    }
+}
