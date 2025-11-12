@@ -1,32 +1,25 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ESNext",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"], // 确保 DOM 在这里
-    "module": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ESNext", "webworker"], // <--- 确保包含 "webworker"
+    "allowJs": false,
     "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    
-    /* V135 修复：添加 node 类型 */
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true, 
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    
-    /* Chrome API types */
-    "types": ["vite/client", "chrome", "node"] // V135 修复：添加 "node"
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "types": ["chrome"] // <--- 明确添加 @types/chrome
   },
-  "include": ["src"],
-  "references": [] 
+  "include": ["src"], // <--- 只保留 "src"
+  "references": [{ "path": "./tsconfig.node.json" }] // <--- 确保引用正确
 }

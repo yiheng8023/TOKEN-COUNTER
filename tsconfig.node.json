@@ -1,0 +1,11 @@
+// tsconfig.node.json
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true, // 添加这一行
+    "types": ["node"] // 指定为 Node.js 环境
+  },
+  "include": ["vite.config.ts"] // 包含你的 Vite 配置
+}

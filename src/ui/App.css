@@ -1,0 +1,138 @@
+/* src/ui/App.css (V165: 修复 R-UI-Polish 灰色字体 Bug) */
+
+/* 1. "世界级" 字体 (R-UI-Polish) */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+/* V161 (R11) 修复: 确保整个 Side Panel 背景被覆盖 */
+html, body, #root, .app-container {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box; /* 确保 padding 不会导致溢出 */
+}
+
+/* 2. "世界级" 主题 (R11) - 浅色模式 (默认) */
+:root {
+  --font-family: 'Roboto', "Helvetica Neue", Arial, sans-serif;
+  --bg-color: #f0f0f0; /* 外框背景 */
+  --text-primary: #333333;
+  /* V164 (R-UI-Polish) 修复: 坚决不使用灰色 */
+  --text-secondary: #333333; 
+  --border-color: #cccccc;
+  --box-bg-color: #ffffff; /* 内容框背景 */
+  --box-border-color: #dddddd;
+  --box-header-color: #1e1e1e;
+}
+
+/* 3. "世界级" 主题 (R11) - 暗色模式 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #1e1e1e;
+    --text-primary: #ffffff;
+    /* V164 (R-UI-Polish) 修复: 坚决不使用灰色 (V161 的 #bbbbbb 仍是灰色) */
+    --text-secondary: #ffffff; 
+    --border-color: #333333;
+    --box-bg-color: #282828; 
+    --box-border-color: #444444;
+    --box-header-color: #eeeeee;
+  }
+}
+
+/* V161 (R11) 修复: 将背景色直接应用到 body */
+body {
+  background-color: var(--bg-color);
+}
+
+/* 4. 应用变量 (App.tsx 中的 .app-container) */
+.app-container {
+  padding: 10px;
+  color: var(--text-primary); 
+  min-width: 250px;
+  font-family: var(--font-family);
+}
+
+/* V158 (R-UI-Layout) 修复: "别扭"的顶部栏 */
+.header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.header-model-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--box-header-color);
+}
+
+.settings-button {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 5px;
+}
+
+/* V158: 内容框 */
+.content-box {
+  border: 1px solid var(--box-border-color);
+  background-color: var(--box-bg-color); /* V158 (R11) 修复 */
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.count-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.count-label {
+  color: var(--text-secondary); /* V165 (R-UI-Polish) 修复 */
+  cursor: help;
+  /* V165 修复: 移除 opacity: 0.8 */
+}
+
+.count-value {
+  color: var(--text-primary);
+}
+
+.total-divider {
+  margin-top: 10px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 8px;
+}
+
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+}
+
+.total-label {
+  color: var(--text-primary);
+  cursor: help;
+}
+
+.alert-message {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+}
+
+.status-row {
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: var(--text-secondary); /* V165 (R-UI-Polish) 修复 */
+  font-style: normal;
+  font-size: 11px;
+  /* V165 修复: 移除 opacity: 0.8 */
+}
+
+/* V158 (R12) 状态颜色 */
+.status-calculating {
+  color: #FFC107; /* 警告色 */
+  font-weight: bold;
+  opacity: 1; /* V164 修复: 计算中状态必须 100% 不透明 */
+}

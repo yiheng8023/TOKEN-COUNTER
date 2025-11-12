@@ -1,21 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "Token Counter (v1.1)",
-  "version": "1.1",
-  "description": "V1.1: 重构版。实现 100% 本地、高精度、基于 @xenova/transformers 的 Token 计算。",
+  "name": "__MSG_extensionName__",
+  "version": "1.2",
+  "description": "__MSG_extensionDescription__",
   "default_locale": "zh_CN",
   "permissions": [
     "storage",
     "sidePanel",
     "scripting",
-    "unlimitedStorage",
-    "offscreen"
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "https://gemini.google.com/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -29,10 +29,10 @@
     }
   ],
   "action": {
-    "default_title": "Token Counter (v1.1)"
+    "default_title": "__MSG_extensionName__"
   },
   "side_panel": {
-    "default_path": "src/ui/side-panel.html"
+    "default_path": "side-panel.html"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
@@ -40,11 +40,18 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "src/engine/offscreen.html"
+        "side-panel.html",
+        "assets/*",
+        "icons/*"
       ],
       "matches": [
         "<all_urls>"
       ]
     }
-  ]
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
 }

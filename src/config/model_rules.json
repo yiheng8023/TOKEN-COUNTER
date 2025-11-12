@@ -1,20 +1,12 @@
 {
-  "VERSION": "1.1",
+  "VERSION": "1.11 (Final-11)",
   "DEFAULT_MODEL_NAME": "Gemini 2.5 Pro",
   "MODELS": {
     "Gemini 2.5 Pro": {
-      "MAX_TOKENS": 1114112,
+      "MAX_TOKENS": 1048576,
       "ALERT_THRESHOLD": 0.8
     },
     "Gemini 2.5 Flash": {
-      "MAX_TOKENS": 2097152,
-      "ALERT_THRESHOLD": 0.8
-    },
-    "Gemini Pro": {
-      "MAX_TOKENS": 32768,
-      "ALERT_THRESHOLD": 0.8
-    },
-    "Gemini 1.5 Pro": {
       "MAX_TOKENS": 1048576,
       "ALERT_THRESHOLD": 0.8
     }

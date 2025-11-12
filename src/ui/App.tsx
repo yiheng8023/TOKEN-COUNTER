@@ -1,31 +1,23 @@
-// src/ui/App.tsx (V155: 修复 R1 致命数学逻辑 & 移除 R2/R7 'Thought')
+// src/ui/App.tsx (V168: 修复 R-UI-Annotation 文本中的 "258 估算" Bug)
 import { useState, useEffect } from 'react';
 import * as Rules from '../config/model_rules.json'; 
-
-/**
- * 消息类型枚举 (UI Script 独立定义以避免模块解析错误)
- */
-enum MessageType {
-    // 仅包含 UI 监听的类型
-    UPDATE_UI_TOKENS = 'UPDATE_UI_TOKENS',
-    UPDATE_UI_COUNTERS = 'UPDATE_UI_COUNTERS',
-    UPDATE_UI_MODEL = 'UPDATE_UI_MODEL',
-    UPDATE_UI_STATUS = 'UPDATE_UI_STATUS',
-    REQUEST_INITIAL_STATE = 'REQUEST_INITIAL_STATE', 
-}
+import './App.css'; 
+// V1.2b 修复: 使用 1 级相对路径 (../)
+import { MessageType } from '../utils/common';
 
 // 导入规则和默认值
 const MODEL_RULES = Rules.MODELS as Record<string, { MAX_TOKENS: number, ALERT_THRESHOLD: number }>;
-// V155 (R2) 修复: 'THOUGHT_COST_PER_TURN' 已弃用
 const COST_RULES = Rules.COST_RULES as { FILE_COST_PER_UNIT: number };
 const DEFAULT_MODEL_NAME = Rules.DEFAULT_MODEL_NAME;
 
 const getMessage = (key: string) => {
     if (key === 'labelText') return (typeof chrome !== 'undefined' && chrome.i18n.getMessage(key)) || '文本';
+    if (key === 'labelFile') return (typeof chrome !== 'undefined' && chrome.i18n.getMessage(key)) || '文件 (?)';
+    if (key === 'statusReady') return (typeof chrome !== 'undefined' && chrome.i18n.getMessage(key)) || '就绪';
+    if (key === 'statusCalculating') return (typeof chrome !== 'undefined' && chrome.i18n.getMessage(key)) || '计算中...';
     return typeof chrome !== 'undefined' && chrome.i18n ? chrome.i18n.getMessage(key) : `[${key}]`;
 };
 
-// V155 (R7) 修复: 从状态中移除 'thought'
 interface TokenState {
     total: number;
     text: number;
@@ -39,13 +31,10 @@ const initialState: TokenState = {
 
 function App() {
     const [tokens, setTokens] = useState<TokenState>(initialState);
-    const [modelName, setModelName] = useState<string>(DEFAULT_MODEL_NAME); 
-    const [status, setStatus] = useState<string>(''); 
+    const [modelName, setModelName] = useState<string>(DEFAULT_MODEL_NAME);
+    const [status, setStatus] = useState<string>('');
     
-    // V167: 实现主题自适应逻辑
-    const [isDark, setIsDark] = useState(true); 
-    
-    // V175 修复: 模型自适应 - 查找最匹配的规则
+    // V175 修复: 模型自适应 (V155 已存在)
     const currentModelRules = (() => {
         // 尝试精确匹配
         if (MODEL_RULES[modelName as keyof typeof MODEL_RULES]) {
@@ -65,16 +54,10 @@ function App() {
     const alertThreshold = currentModelRules.ALERT_THRESHOLD;
     const usageRatio = tokens.total / maxTokens;
     
-    // V147 (R11) 修复: 确保主题颜色在顶层定义
-    const bgColor = isDark ? '#1e1e1e' : '#f0f0f0'; // 亮色背景
-    const primaryTextColor = isDark ? '#fff' : '#333'; // 主要文本 (亮色/暗色)
-    const secondaryTextColor = isDark ? '#ccc' : '#555'; // 次要文本 (亮色/暗色)
-    const noteColor = isDark ? '#888' : '#666'; // 状态和说明文本
+    let totalColor: string | undefined = undefined; // V158: 默认为 CSS 变量
     
-    let totalColor = primaryTextColor; // 默认总计颜色
-    
-    // R3 (需求 #5) 修复: 默认 alertMessage 为空，不再显示 "上限:"
-    let alertMessage = ''; 
+    // R3 (需求 #5) 修复: (V155 已存在)
+    let alertMessage = '';
     
     if (usageRatio > alertThreshold) {
         totalColor = '#FFC107'; // 警告色
@@ -87,17 +70,11 @@ function App() {
 
     
     useEffect(() => {
-        const query = window.matchMedia('(prefers-color-scheme: dark)');
-        setIsDark(query.matches); // 立即设置
-        const listener = (e: MediaQueryListEvent) => setIsDark(e.matches);
-        query.addEventListener('change', listener);
-        
         chrome.runtime.sendMessage({ type: MessageType.REQUEST_INITIAL_STATE })
             .then(() => {}) 
             .catch(() => {});
         
-        return () => query.removeEventListener('change', listener);
-    }, []); 
+    }, []); // V158: 移除所有 'isDark' 依赖
 
 
     useEffect(() => {
@@ -110,7 +87,7 @@ function App() {
             
             // 2. V155 (R2/R7) 修复: 仅处理文件计数 
             if (message.type === MessageType.UPDATE_UI_COUNTERS) {
-                // V155 (R2) 修复: 'thoughtTurns' 已被移除
+                // V168 (R1.1-Cost) 修复: 确保使用来自 V-Final-10 (258) 的正确值
                 const calculatedFile = message.fileCount * COST_RULES.FILE_COST_PER_UNIT;       
 
                 setTokens(prev => ({
@@ -123,7 +100,6 @@ function App() {
 
             // 3. V155 (R1) 致命逻辑修复 (Bug B):
             if (message.type === MessageType.UPDATE_UI_TOKENS) {
-                // 'message.totalTokens' 实际上 *仅仅是* 'text' 的 Token 计数
                 const newTextTotal = message.totalTokens; 
                 
                 setTokens(prev => ({
@@ -133,11 +109,16 @@ function App() {
                     // V155 (R1) 修复: 总计 = 新的文本 + 现有的文件
                     total: newTextTotal + prev.file, 
                 }));
+
+                // V157 (R12) 竞争条件修复: 
+                // 当收到 Token 结果时，才将状态设置回“就绪”。
+                setStatus(getMessage('statusReady'));
             }
 
-            // 4. 处理状态更新
+            // 4. 处理状态更新 (V155 已存在, V185 将使用它)
             if (message.type === MessageType.UPDATE_UI_STATUS) {
-                setStatus(chrome.i18n.getMessage(message.data.status) || message.data.status);
+                // V185 发送 'statusCalculating' 或 'statusReady'
+                setStatus(getMessage(message.data.status) || message.data.status);
             }
         };
 
@@ -145,78 +126,99 @@ function App() {
         return () => {
             chrome.runtime.onMessage.removeListener(messageHandler);
         };
-    }, [modelName]); // V155 修复: 此处依赖项 [modelName] 是正确的，无需更改
+    }, [modelName]); // V155 修复: [modelName] 依赖项是正确的
     
     const handleSettingsClick = () => {
-        // R5 (需求 #8) 修复: 移除 "cdn" 字样
+        // R5 (需求 #8) 修复: (V155 已存在)
         alert('设置功能 (Phase 2) 待开发，用于语言切换（中/英）等。');
     };
 
-    // --- 渲染部分 (V151 修复主题) ---
-    const renderCountRow = (label: string, count: number) => (
-        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0'}}>
-            {/* R11 (需求 #4/5) 修复: 使用自适应颜色 */}
-            <span style={{ color: secondaryTextColor }}> 
+    // V158 (R-UI-Annotation) 修复: 
+    // (V157 的逻辑已正确, 现改为使用 CSS 类)
+    const renderCountRow = (label: string, count: number, tooltip: string = "") => (
+        <div className="count-row" key={label}>
+            <span 
+                title={tooltip}
+                className="count-label"
+            > 
                 {label}
             </span>
-            {/* R11 (需求 #4/5) 修复: 使用自适应颜色 */}
-            <span style={{ color: primaryTextColor }}> 
+            <span className="count-value"> 
                 {count.toLocaleString()}
             </span>
         </div>
     );
 
-    const modelInfo = modelName; 
-    
-    // V175 修复: 集中总计显示逻辑
+    const modelInfo = modelName;
     const totalDisplay = `${tokens.total.toLocaleString()} / ${maxTokens.toLocaleString()} (${(usageRatio * 100).toFixed(1)}%)`;
     
+    // V158 (R12) 状态 Class
+    const statusClassName = status === getMessage('statusCalculating') 
+        ? "status-row status-calculating" 
+        : "status-row";
 
     return (
-        // R11 (需求 #6) 修复: 确保根 div 应用主题颜色
-        <div style={{ padding: '10px', backgroundColor: bgColor, color: primaryTextColor, height: '100%', minWidth: '250px' }}>
+        // V167 (R11 / R-UI-Polish) 修复: 移除所有内联样式，100% 依赖 CSS 类
+        <div className="app-container">
             
-            {/* R9 (需求 #1) 修复: 顶部标题栏（<h3/>）已被移除 */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '10px' }}>
-                <button onClick={handleSettingsClick} style={{ background: 'none', border: 'none', color: primaryTextColor, cursor: 'pointer', fontSize: '14px', padding: '0 5px' }}>
+            {/* V158 (R-UI-Layout) 修复: "别扭"的顶部栏 */}
+            <div className="header-bar">
+                {/* (需求 #2, #3) 修复: (V155 已存在, V158 移动到此) */}
+                <h4 className="header-model-name">
+                    模型: {modelInfo}
+                </h4>
+                
+                {/* R9 (需求 #1) 修复: (V155 已存在, V158 移动到此) */}
+                <button onClick={handleSettingsClick} className="settings-button">
                     ⚙️
                 </button>
             </div>
             
-            <div style={{ border: `1px solid ${isDark ? '#333' : '#ccc'}`, padding: '10px', borderRadius: '4px' }}>
+            {/* V158 (R11) 修复: "大面积白色" 自适应 */}
+            <div className="content-box">
                 
-                {/* (需求 #2, #3) 修复: 在内容区上方显示模型名称 */}
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: primaryTextColor }}>
-                    模型: {modelInfo}
-                </h4>
-
-                {renderCountRow(getMessage('labelText'), tokens.text)}
-                {renderCountRow(getMessage('labelFile'), tokens.file)}
+                {/* V157 (R-UI-Annotation) 修复: 添加 title 注释 */}
+                {renderCountRow(
+                    getMessage('labelText') + ' (?)', 
+                    tokens.text, 
+                    "文本 = 用户输入 + 模型输出 + 模型思考"
+                )}
+                {/* V168 (R1.1-Cost) 修复: 更新注释文本 */ }
+                {renderCountRow(
+                    getMessage('labelFile'), 
+                    tokens.file, 
+                    "文件 = 用户上传 + 模型生成 (基础值: 258 Tokens)"
+                )}
                 
-                {/* V155 (R7) 修复: 已移除 'labelThought' 行 */}
-                
-                {/* V175 修复: 集中总计显示，并应用告警色 */}
-                <div style={{ marginTop: '10px', borderTop: `1px solid ${isDark ? '#444' : '#ccc'}`, paddingTop: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                        <span style={{ color: primaryTextColor }}>总计:</span>
+                {/* V175 修复: (V155 已存在) */}
+                <div className="total-divider">
+                    <div className="total-row">
+                        {/* V157 (R-UI-Annotation) 修复: 添加 title 注释 */}
+                        <span 
+                            title="（文本 + 文件） / 单窗口上下文上限"
+                            className="total-label"
+                        >
+                            总计 (?):
+                        </span>
                         <span style={{ color: totalColor }}>{totalDisplay}</span>
                     </div>
-                    {/* R3 (需求 #5) 修复: 仅在需要时显示告警消息 */}
+                    {/* R3 (需求 #5) 修复: (V155 已存在) */}
                     {alertMessage && (
-                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: totalColor }}>
+                        <p className="alert-message" style={{ color: totalColor }}>
                             {alertMessage}
                         </p>
                     )}
                 </div>
                 
-                {/* R6 (需求 #11) 修复: 更新说明文本、样式和颜色 */}
-                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: noteColor }}>
-                    <span style={{color: noteColor, fontStyle: 'normal', fontSize: '11px'}}>
+                {/* R6 (需求 #11) 修复: (V155 已存在) */}
+                <p className={statusClassName}>
+                    <span>
+                        {/* V157 (R12) 修复: 'status' 变量将在此处动态显示 '计算中...' */}
                         状态: {status || getMessage('statusReady')} 
                     </span>
                 </p>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: noteColor }}>
-                    <span style={{color: noteColor, fontStyle: 'normal', fontSize: '11px'}}>
+                <p className="status-row">
+                    <span>
                         说明：计数器自动统计当前对话内容。如需统计历史记录，请手动上滚页面。
                     </span>
                 </p>
