@@ -1,15 +1,17 @@
-// src/ui/App.tsx (V168: 修复 R-UI-Annotation 文本中的 "258 估算" Bug)
+// C:\Projects\TOKEN-COUNTER\src\ui\App.tsx
+// V1.4: 统一通信协议 (Task 1.4)，使其与 V168 逻辑兼容
+
 import { useState, useEffect } from 'react';
 import * as Rules from '../config/model_rules.json'; 
 import './App.css'; 
-// V1.2b 修复: 使用 1 级相对路径 (../)
-import { MessageType } from '../utils/common';
+import { MessageType } from '../utils/common'; // V1.2b 修复: 指向统一的 common.ts
 
-// 导入规则和默认值
+// 导入规则和默认值 (V168)
 const MODEL_RULES = Rules.MODELS as Record<string, { MAX_TOKENS: number, ALERT_THRESHOLD: number }>;
 const COST_RULES = Rules.COST_RULES as { FILE_COST_PER_UNIT: number };
 const DEFAULT_MODEL_NAME = Rules.DEFAULT_MODEL_NAME;
 
+// i18n 辅助函数 (V168)
 const getMessage = (key: string) => {
     if (key === 'labelText') return (typeof chrome !== 'undefined' && chrome.i18n.getMessage(key)) || '文本';
     if (key === 'labelFile') return (typeof chrome !== 'undefined' && chrome.i18n.getMessage(key)) || '文件 (?)';
@@ -34,13 +36,11 @@ function App() {
     const [modelName, setModelName] = useState<string>(DEFAULT_MODEL_NAME);
     const [status, setStatus] = useState<string>('');
     
-    // V175 修复: 模型自适应 (V155 已存在)
+    // V168 模型自适应逻辑 (保留)
     const currentModelRules = (() => {
-        // 尝试精确匹配
         if (MODEL_RULES[modelName as keyof typeof MODEL_RULES]) {
             return MODEL_RULES[modelName as keyof typeof MODEL_RULES];
         }
-        // 尝试模糊匹配
         for (const key in MODEL_RULES) {
             if (modelName.includes(key) || key.includes(modelName)) {
                 return MODEL_RULES[key];
@@ -49,14 +49,11 @@ function App() {
         return MODEL_RULES[DEFAULT_MODEL_NAME];
     })();
 
-
     const maxTokens = currentModelRules.MAX_TOKENS;
     const alertThreshold = currentModelRules.ALERT_THRESHOLD;
     const usageRatio = tokens.total / maxTokens;
     
-    let totalColor: string | undefined = undefined; // V158: 默认为 CSS 变量
-    
-    // R3 (需求 #5) 修复: (V155 已存在)
+    let totalColor: string | undefined = undefined; 
     let alertMessage = '';
     
     if (usageRatio > alertThreshold) {
@@ -68,57 +65,75 @@ function App() {
         alertMessage = `🛑 已超限 (${(usageRatio * 100).toFixed(1)}%)`;
     }
 
+    // -----------------------------------------------------------------
+    // 任务 1.4 核心：更新 Effect 钩子
+    // -----------------------------------------------------------------
     
     useEffect(() => {
-        chrome.runtime.sendMessage({ type: MessageType.REQUEST_INITIAL_STATE })
-            .then(() => {}) 
-            .catch(() => {});
-        
-    }, []); // V158: 移除所有 'isDark' 依赖
+        // 1. 组件加载时，请求 Service Worker 发送当前状态
+        try {
+            chrome.runtime.sendMessage({ type: MessageType.UI_REQUEST_INITIAL_STATE });
+        } catch (e) {
+            console.warn('UI: 无法在启动时请求初始状态 (可能 SW 未就绪)', e);
+            setStatus('错误: SW 未连接');
+        }
 
+        // 2. 设置消息监听器
+        const messageHandler = (message: any) => {
+            const { type, payload } = message;
 
-    useEffect(() => {
-        const messageHandler = (message: any, _sender: chrome.runtime.MessageSender, _sendResponse: (response: any) => void) => {
-            
-            // 1. 处理模型名称更新 
-            if (message.type === MessageType.UPDATE_UI_MODEL) {
-                setModelName(message.modelName);
-            }
-            
-            // 2. V155 (R2/R7) 修复: 仅处理文件计数 
-            if (message.type === MessageType.UPDATE_UI_COUNTERS) {
-                // V168 (R1.1-Cost) 修复: 确保使用来自 V-Final-10 (258) 的正确值
-                const calculatedFile = message.fileCount * COST_RULES.FILE_COST_PER_UNIT;       
+            // 任务 1.4: 监听新的、统一的消息
+            switch (type) {
+                // (V168 逻辑) 监听模型名称更新
+                case MessageType.BG_UPDATE_MODEL_NAME:
+                    setModelName(payload.modelName);
+                    break;
 
-                setTokens(prev => ({
-                    ...prev,
-                    file: calculatedFile,
-                    // V155 (R1) 修复: 总计 = 现有的文本 + 新的文件
-                    total: prev.text + calculatedFile, 
-                }));
-            }
+                // (V168 逻辑) 监听文件计数更新
+                case MessageType.BG_UPDATE_FILE_COUNT:
+                    const calculatedFile = payload.fileCount * COST_RULES.FILE_COST_PER_UNIT;
+                    setTokens(prev => ({
+                        ...prev,
+                        file: calculatedFile,
+                        total: prev.text + calculatedFile, 
+                    }));
+                    break;
 
-            // 3. V155 (R1) 致命逻辑修复 (Bug B):
-            if (message.type === MessageType.UPDATE_UI_TOKENS) {
-                const newTextTotal = message.totalTokens; 
+                // (V168 逻辑) 监听文本 Token 更新
+                case MessageType.BG_UPDATE_TEXT_TOKENS:
+                    const newTextTotal = payload.totalTokens;
+                    setTokens(prev => ({
+                        ...prev,
+                        text: newTextTotal,
+                        total: newTextTotal + prev.file, 
+                    }));
+                    break;
                 
-                setTokens(prev => ({
-                    ...prev,
-                    // V155 (R1) 修复: 文本 = 传入的文本计数
-                    text: newTextTotal, 
-                    // V155 (R1) 修复: 总计 = 新的文本 + 现有的文件
-                    total: newTextTotal + prev.file, 
-                }));
+                // (V168 逻辑) 监听状态：忙碌 (计算中)
+                case MessageType.BG_UPDATE_STATUS_BUSY:
+                    setStatus(getMessage('statusCalculating'));
+                    break;
+                
+                // (V168 逻辑) 监听状态：就绪
+                case MessageType.BG_UPDATE_STATUS_READY:
+                    setStatus(getMessage('statusReady'));
+                    break;
 
-                // V157 (R12) 竞争条件修复: 
-                // 当收到 Token 结果时，才将状态设置回“就绪”。
-                setStatus(getMessage('statusReady'));
-            }
-
-            // 4. 处理状态更新 (V155 已存在, V185 将使用它)
-            if (message.type === MessageType.UPDATE_UI_STATUS) {
-                // V185 发送 'statusCalculating' 或 'statusReady'
-                setStatus(getMessage(message.data.status) || message.data.status);
+                // (V1.4 新增) 监听来自 SW 的“初始状态”快照
+                case MessageType.BG_SEND_INITIAL_STATE:
+                    const { modelName, fileCount, totalTokens } = payload;
+                    
+                    const initialFile = fileCount * COST_RULES.FILE_COST_PER_UNIT;
+                    const initialText = totalTokens;
+                    
+                    setModelName(modelName);
+                    setTokens({
+                        file: initialFile,
+                        text: initialText,
+                        total: initialFile + initialText
+                    });
+                    setStatus(getMessage('statusReady')); // 收到状态即为就绪
+                    break;
             }
         };
 
@@ -126,15 +141,14 @@ function App() {
         return () => {
             chrome.runtime.onMessage.removeListener(messageHandler);
         };
-    }, [modelName]); // V155 修复: [modelName] 依赖项是正确的
+    }, []); // 保持 V168 逻辑，仅在挂载时运行
     
+    // (V168 逻辑) 设置按钮
     const handleSettingsClick = () => {
-        // R5 (需求 #8) 修复: (V155 已存在)
         alert('设置功能 (Phase 2) 待开发，用于语言切换（中/英）等。');
     };
 
-    // V158 (R-UI-Annotation) 修复: 
-    // (V157 的逻辑已正确, 现改为使用 CSS 类)
+    // (V168 逻辑) 渲染行
     const renderCountRow = (label: string, count: number, tooltip: string = "") => (
         <div className="count-row" key={label}>
             <span 
@@ -152,48 +166,39 @@ function App() {
     const modelInfo = modelName;
     const totalDisplay = `${tokens.total.toLocaleString()} / ${maxTokens.toLocaleString()} (${(usageRatio * 100).toFixed(1)}%)`;
     
-    // V158 (R12) 状态 Class
+    // (V168 逻辑) 状态 Class
     const statusClassName = status === getMessage('statusCalculating') 
         ? "status-row status-calculating" 
         : "status-row";
 
+    // -----------------------------------------------------------------
+    // 任务 1.4: UI 渲染 (V168 逻辑保持不变)
+    // -----------------------------------------------------------------
     return (
-        // V167 (R11 / R-UI-Polish) 修复: 移除所有内联样式，100% 依赖 CSS 类
         <div className="app-container">
-            
-            {/* V158 (R-UI-Layout) 修复: "别扭"的顶部栏 */}
             <div className="header-bar">
-                {/* (需求 #2, #3) 修复: (V155 已存在, V158 移动到此) */}
                 <h4 className="header-model-name">
                     模型: {modelInfo}
                 </h4>
-                
-                {/* R9 (需求 #1) 修复: (V155 已存在, V158 移动到此) */}
                 <button onClick={handleSettingsClick} className="settings-button">
                     ⚙️
                 </button>
             </div>
             
-            {/* V158 (R11) 修复: "大面积白色" 自适应 */}
             <div className="content-box">
-                
-                {/* V157 (R-UI-Annotation) 修复: 添加 title 注释 */}
                 {renderCountRow(
                     getMessage('labelText') + ' (?)', 
                     tokens.text, 
                     "文本 = 用户输入 + 模型输出 + 模型思考"
                 )}
-                {/* V168 (R1.1-Cost) 修复: 更新注释文本 */ }
                 {renderCountRow(
                     getMessage('labelFile'), 
                     tokens.file, 
                     "文件 = 用户上传 + 模型生成 (基础值: 258 Tokens)"
                 )}
                 
-                {/* V175 修复: (V155 已存在) */}
                 <div className="total-divider">
                     <div className="total-row">
-                        {/* V157 (R-UI-Annotation) 修复: 添加 title 注释 */}
                         <span 
                             title="（文本 + 文件） / 单窗口上下文上限"
                             className="total-label"
@@ -202,7 +207,6 @@ function App() {
                         </span>
                         <span style={{ color: totalColor }}>{totalDisplay}</span>
                     </div>
-                    {/* R3 (需求 #5) 修复: (V155 已存在) */}
                     {alertMessage && (
                         <p className="alert-message" style={{ color: totalColor }}>
                             {alertMessage}
@@ -210,10 +214,8 @@ function App() {
                     )}
                 </div>
                 
-                {/* R6 (需求 #11) 修复: (V155 已存在) */}
                 <p className={statusClassName}>
                     <span>
-                        {/* V157 (R12) 修复: 'status' 变量将在此处动态显示 '计算中...' */}
                         状态: {status || getMessage('statusReady')} 
                     </span>
                 </p>
@@ -223,7 +225,6 @@ function App() {
                     </span>
                 </p>
             </div>
-            
         </div>
     );
 }

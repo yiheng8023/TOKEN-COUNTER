@@ -1,51 +1,24 @@
-// src/content/index.ts (V19: 修复 Content Script 编译和路径)
+// C:\Projects\TOKEN-COUNTER\src\content\index.ts
+// V1.5d (Task 1.5d): 移除 .ts 扩展名
 
-import { initializeGeminiEngine } from './engines/gemini';
-// V17 修复: 'coze' 引擎尚不存在，必须注释掉
-// import { initializeCozeEngine } from './engines/coze'; 
-// V19 修复: 移除 MessageType 导入，因为已在 gemini/index.ts 中直接导入
+console.log('TOKEN-COUNTER Content Script (V1.5d) is loaded.');
 
-console.log('TOKEN-COUNTER Content Script (V19) started.');
+/**
+ * 动态加载器
+ * V1.5: 我们只关心 Gemini，因此我们硬编码加载它。
+ * * V2.0 (未来 - "水平扩张"): 
+ * 这里将检测 window.location.hostname，
+ * 然后动态 import('./engines/chatgpt') 或 import('./engines/claude')
+ */
 
-// --- 暴露给 Content Engine 的工具函数 ---
-export function debounce<F extends (...args: any[]) => any>(func: F, delay: number): (...args: Parameters<F>) => void {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    return function(this: any, ...args: Parameters<F>) {
-        const context = this;
-        if (timeout) {
-            clearTimeout(timeout);
-        }
-        timeout = setTimeout(() => {
-            func.apply(context, args);
-            timeout = null;
-        }, delay);
-    };
+if (window.location.hostname.includes('gemini.google.com')) {
+    
+    // V1.5d 修复: 移除 .ts 扩展名
+    import('./engines/gemini/index')
+        .then(() => {
+            console.log('CS (V1.5d): Gemini 引擎加载成功。');
+        })
+        .catch(e => {
+            console.error('CS (V1.5d): 无法加载 Gemini 引擎!', e);
+        });
 }
-
-// --- 根据 URL 初始化相应的引擎 ---
-function initEngineBasedOnUrl() {
-    const url = window.location.href;
-
-    if (url.includes('gemini.google.com')) {
-        console.log('TOKEN-COUNTER: Initializing Gemini engine...');
-        initializeGeminiEngine(); 
-    } 
-    // V17 修复: 'coze' 引擎尚不存在，必须注释掉
-    /* else if (url.includes('coze.com')) {
-        console.log('TOKEN-COUNTER: Initializing Coze engine...');
-        initializeCozeEngine(); 
-    }
-    */
-}
-
-// 页面加载后立即尝试初始化
-initEngineBasedOnUrl();
-
-// 监听 URL 变化，例如单页应用中的路由变化
-new MutationObserver(() => {
-    const newUrl = window.location.href;
-    if (window.location.href !== newUrl) { // 检查 URL 是否实际变化
-        // 重置状态或重新初始化引擎
-        initEngineBasedOnUrl();
-    }
-}).observe(document, { subtree: true, childList: true });

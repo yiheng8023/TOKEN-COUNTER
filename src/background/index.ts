@@ -1,67 +1,71 @@
 // C:\Projects\TOKEN-COUNTER\src\background\index.ts
-// 这是基于我们新 "Web Worker 蓝图" 的全新版本
+// V1.5 (Task 1.5): 激活数据管道，处理来自 Content Script 的数据
 
-import { Logger } from './storage'; // 导入您 V147 的日志记录器
+import { Logger } from './storage';
+import { MessageType } from '../utils/common'; // V1.4
+import * as Rules from '../config/model_rules.json'; // V1.4
 
-console.log('Service Worker (SW) 启动。');
-Logger.info('Service Worker 启动。');
+console.log('Service Worker (SW) 启动 (V1.5)。');
+Logger.info('Service Worker 启动 (V1.5)。');
 
 // -------------------------------------------------
-// 1. 启动我们的“计算工厂” (Web Worker)
+// 1. (V1.3) 启动“计算工厂” (Web Worker)
 // -------------------------------------------------
-
 let modelWorker: Worker;
 let isModelReady = false;
+let currentTextToCalculate = ''; // V1.5: 缓存，用于对比
 
 function initializeModelWorker() {
     try {
         modelWorker = new Worker(
-            // Vite/Rollup 会自动处理这个 URL
             new URL('./modelWorker.ts', import.meta.url), 
             { type: 'module' }
         );
-
         console.log('SW: Model Worker 正在初始化...');
         
-        // 监听来自 Model Worker 的消息
         modelWorker.onmessage = (event) => {
             const { type, payload, error } = event.data;
 
             switch (type) {
                 case 'model_loading_progress':
-                    console.log('SW: 收到模型加载进度', payload.status, payload.progress);
-                    // 我们可以将进度转发给 UI (如果 UI 处于打开状态)
-                    // port?.postMessage({ type: 'UPDATE_UI_STATUS', ... });
+                    sendToUI(MessageType.BG_UPDATE_STATUS_BUSY);
+                    console.log('SW: 收到模型加载进度', payload.status);
                     break;
                 
                 case 'model_loaded':
                     isModelReady = true;
+                    sendToUI(MessageType.BG_UPDATE_STATUS_READY);
                     console.log('SW: Model Worker 报告模型加载完毕！');
                     Logger.info('Tokenizer 模型已加载并缓存。');
-                    // 如果 Port 已连接，通知 UI
-                    activePort?.postMessage({ type: 'MODEL_LOADED' });
+                    // V1.5: 模型加载后，立即计算一次当前文本
+                    if (currentTextToCalculate) {
+                        triggerTokenCalculation(currentTextToCalculate);
+                    }
                     break;
 
                 case 'model_load_error':
+                    isModelReady = false;
+                    sendToUI(MessageType.BG_UPDATE_STATUS_READY);
                     console.error('SW: Model Worker 报告模型加载失败!', error);
                     Logger.error('Model Worker 加载失败', error);
-                    activePort?.postMessage({ type: 'ERROR', message: '模型加载失败', error: error });
                     break;
                 
+                // V1.5: 接收来自 Worker 的计算结果
                 case 'token_calculation_complete':
-                    console.log(`SW: 收到计算结果: ${payload.tokenCount}`);
-                    // 将结果通过 Port 发回 UI
-                    activePort?.postMessage({
-                        type: 'TOKENS_CALCULATED',
-                        tokenCount: payload.tokenCount,
-                        originalText: payload.text
+                    // 这是 V168 (App.tsx) 真正需要的消息
+                    sendToUI(MessageType.BG_UPDATE_TEXT_TOKENS, { 
+                        totalTokens: payload.tokenCount 
                     });
+                    // 更新我们的“单一事实来源”
+                    currentTextTokens = payload.tokenCount;
+                    // V1.5: 告诉 UI 计算已完成
+                    sendToUI(MessageType.BG_UPDATE_STATUS_READY);
+                    Logger.info(`计算完成: ${payload.tokenCount} tokens`);
                     break;
                 
                 case 'token_calculation_error':
-                    console.error('SW: Model Worker 报告计算失败!', error);
                     Logger.error('Token 计算失败', error);
-                    activePort?.postMessage({ type: 'ERROR', message: 'Token 计算失败', error: error });
+                    sendToUI(MessageType.BG_UPDATE_STATUS_READY); // 计算失败也要 "Ready"
                     break;
             }
         };
@@ -69,8 +73,7 @@ function initializeModelWorker() {
         modelWorker.onerror = (e) => {
             console.error('SW: Model Worker 出现致命错误', e);
             Logger.error('Model Worker 致命错误', e.message);
-            isModelReady = false; // 重置状态
-            // 尝试重启 Worker
+            isModelReady = false;
             initializeModelWorker();
         };
 
@@ -79,65 +82,118 @@ function initializeModelWorker() {
         Logger.error('无法创建 Model Worker', e);
     }
 }
-
-// 立即初始化 Worker
 initializeModelWorker();
 
-// -------------------------------------------------
-// 2. 管理与侧边栏 UI 的“通信枢纽” (Port)
-// -------------------------------------------------
-
-let activePort: chrome.runtime.Port | null = null;
-
-chrome.runtime.onConnect.addListener((port) => {
-    // 我们只关心来自侧边栏的 Port
-    if (port.name === 'sidebar-channel') {
-        activePort = port;
-        console.log('SW: 侧边栏 UI 已连接 (Port 建立)。');
-        Logger.info('UI Port 已连接。');
-
-        // 立即向 UI 发送当前状态
-        // UI (V40) 需要这个
-        port.postMessage({
-            type: isModelReady ? 'INITIAL_STATE_POST_MODEL' : 'INITIAL_STATE_PRE_MODEL',
-            serviceWorkerReady: true,
-            isModelLoaded: isModelReady
-        });
-
-        // 监听来自 UI 的消息
-        port.onMessage.addListener((message) => {
-            console.log(`SW: 收到 UI 消息: ${message.type}`);
-            
-            if (message.type === 'BG_CALCULATE_TOKENS') {
-                if (!isModelReady || !modelWorker) {
-                    port.postMessage({ type: 'ERROR', message: '模型未就绪或 Worker 未启动。' });
-                    return;
-                }
-                // 将计算任务转发给 Model Worker
-                modelWorker.postMessage({
-                    type: 'calculate_tokens',
-                    payload: { text: message.text }
-                });
-            }
-        });
-
-        // 处理 Port 断开
-        port.onDisconnect.addListener(() => {
-            console.log('SW: 侧边栏 UI 已断开 (Port 断开)。');
-            Logger.info('UI Port 已断开。');
-            if (port === activePort) {
-                activePort = null;
-            }
-        });
-    }
-});
 
 // -------------------------------------------------
-// 3. (占位) 监听来自 Content Script 的消息
+// 2. (V1.4) “状态中心”：存储来自 Content Script 的最新数据
 // -------------------------------------------------
-// 我们将在下一个任务中实现这里
+let currentModelName: string = Rules.DEFAULT_MODEL_NAME;
+let currentFileCount: number = 0;
+let currentTextTokens: number = 0; // 这是已计算的 Token 数
+
+// -------------------------------------------------
+// 3. (V1.5) “消息总线”：处理所有传入消息
+// -------------------------------------------------
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    // 示例：
-    // if (message.type === 'BG_CALCULATE_TOKENS_FROM_CONTENT') { ... }
+    const { type, payload } = message;
+
+    switch (type) {
+        // --- 来自 Content Script (CS_SEND_GEMINI_DATA) ---
+        // V1.5: 激活此处理器
+        case MessageType.CS_SEND_GEMINI_DATA:
+            // Logger.info('SW: 收到 Content Script 数据');
+            let hasUiChanged = false;
+            
+            // 1. 更新模型名称
+            if (payload.modelName && payload.modelName !== currentModelName) {
+                currentModelName = payload.modelName;
+                sendToUI(MessageType.BG_UPDATE_MODEL_NAME, { modelName: currentModelName });
+                hasUiChanged = true;
+            }
+            
+            // 2. 更新文件计数
+            if (payload.fileCount !== undefined && payload.fileCount !== currentFileCount) {
+                currentFileCount = payload.fileCount;
+                sendToUI(MessageType.BG_UPDATE_FILE_COUNT, { fileCount: currentFileCount });
+                hasUiChanged = true;
+            }
+
+            // 3. (核心) 更新文本 Token
+            if (payload.textToCalculate !== undefined && payload.textToCalculate !== currentTextToCalculate) {
+                currentTextToCalculate = payload.textToCalculate;
+                // V1.5: 触发 Web Worker 计算
+                triggerTokenCalculation(currentTextToCalculate);
+                hasUiChanged = true; // (计算中)
+            }
+            
+            if (hasUiChanged) {
+                // console.log('SW (V1.5): 数据已更新并转发。');
+            }
+            break;
+        
+
+        // --- 来自 UI (UI_REQUEST_INITIAL_STATE) ---
+        case MessageType.UI_REQUEST_INITIAL_STATE:
+            Logger.info('SW: 收到 UI 初始状态请求');
+            
+            sendToUI(MessageType.BG_SEND_INITIAL_STATE, {
+                modelName: currentModelName,
+                fileCount: currentFileCount,
+                totalTokens: currentTextTokens // 发送 *已计算* 的 Token
+            });
+            
+            if (isModelReady) {
+                sendToUI(MessageType.BG_UPDATE_STATUS_READY);
+            } else {
+                sendToUI(MessageType.BG_UPDATE_STATUS_BUSY); // 仍在加载
+            }
+            break;
+    }
+    
     return true; // 保持异步
 });
+
+// -------------------------------------------------
+// 4. (V1.5) 辅助函数：触发 Worker 计算
+// -------------------------------------------------
+function triggerTokenCalculation(text: string) {
+    if (!text) {
+        // V1.5: 如果文本为空，立即重置
+        currentTextTokens = 0;
+        sendToUI(MessageType.BG_UPDATE_TEXT_TOKENS, { totalTokens: 0 });
+        sendToUI(MessageType.BG_UPDATE_STATUS_READY);
+        return;
+    }
+
+    // 如果模型未就绪，SW 会在 'model_loaded' 事件中自动计算
+    if (!isModelReady || !modelWorker) {
+        sendToUI(MessageType.BG_UPDATE_STATUS_BUSY); // (模型加载中...)
+        return;
+    }
+
+    // V1.5: 告诉 UI 我们开始忙碌
+    sendToUI(MessageType.BG_UPDATE_STATUS_BUSY);
+
+    // V1.5: 将计算任务转发给 Model Worker
+    modelWorker.postMessage({
+        type: 'calculate_tokens',
+        payload: { text: text }
+    });
+}
+
+
+// -------------------------------------------------
+// 5. (V1.4) 辅助函数：向 UI 发送消息
+// -------------------------------------------------
+function sendToUI(type: MessageType, payload: any = {}) {
+    // console.log(`SW: 正在发送消息到 UI: ${type}`, payload);
+    chrome.runtime.sendMessage({ type, payload })
+        .catch(e => {
+            const msg = e.message;
+            if (msg && !msg.includes('Receiving end does not exist')) {
+                console.warn(`SW: sendToUI 失败 (类型: ${type})`, e);
+            }
+        });
+}
