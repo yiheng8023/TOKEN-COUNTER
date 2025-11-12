@@ -3,7 +3,7 @@
         "message": "Universal Token Counter"
     },
     "extensionDescription": {
-        "message": "World-class, private, and offline universal Token calculation tool."
+        "message": "A world-class, private, offline-first universal token calculator."
     },
     "statusReady": {
         "message": "Ready"
@@ -11,16 +11,19 @@
     "statusCalculating": {
         "message": "Calculating..."
     },
+    "statusInitializing": {
+        "message": "Initializing..."
+    },
     "labelTotal": {
         "message": "TOTAL COUNT"
     },
     "labelText": {
-        "message": "Text (Precise)"
+        "message": "Text"
     },
     "labelFile": {
         "message": "File (?)"
     },
     "statusWaiting": {
-        "message": "Awaiting page activity..."
+        "message": "Waiting for page activity..."
     }
 }

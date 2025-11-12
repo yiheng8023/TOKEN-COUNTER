@@ -11,6 +11,9 @@
     "statusCalculating": {
         "message": "计算中..."
     },
+    "statusInitializing": {
+        "message": "初始化中..."
+    },
     "labelTotal": {
         "message": "计算总计"
     },

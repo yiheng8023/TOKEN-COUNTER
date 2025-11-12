@@ -1,11 +1,146 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Token Counter Side Panel</title>
+    
+    <style>
+        /* V6.3: 最终主题变量 */
+        :root {
+            --bg-color-outer: #ffffff; 
+            --box-bg: #f9f9f9; 
+            --text-primary: #000000;
+            --border-color: #cccccc;
+            --font-size-base: 13px; /* V6.3: 统一文字大小 */
+            --spacing-unit: 8px;
+            --line-height: 1.5; /* V6.3: 统一行间距 */
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color-outer: #1a1a1a; 
+                --box-bg: #282828; 
+                --text-primary: #ffffff;
+                --border-color: #444444;
+            }
+        }
+        
+        /* V5.7: 结构和字体 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color-outer);
+            font-family: 'Roboto', "Helvetica Neue", Arial, sans-serif;
+            color: var(--text-primary);
+            line-height: var(--line-height);
+            font-size: var(--font-size-base); /* 统一 */
+            box-sizing: border-box;
+            height: 100%;
+        }
+
+        /* V5.7: 恢复背景框 */
+        .content-box { 
+            background-color: var(--box-bg); 
+            border: 1px solid var(--border-color);
+            padding: var(--spacing-unit);
+            border-radius: 4px;
+            margin: var(--spacing-unit); 
+            box-sizing: border-box;
+            height: calc(100% - 16px); 
+        }
+        
+        /* V5.7: 头部结构 */
+        .header-bar { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: var(--spacing-unit); 
+        }
+        
+        /* V6.3 修复 P1.9 (字体) */
+        #model-name { margin: 0; font-size: var(--font-size-base); font-weight: 700; }
+        
+        /* V6.3 修复 P1.9 (按钮) */
+        #settings-button { 
+            background: transparent; 
+            border: none;
+            color: var(--text-primary); 
+            cursor: pointer; 
+            font-size: 14px; 
+            width: 24px; 
+            height: 24px; 
+            padding: 0; 
+            margin-left: auto;
+        }
+
+        /* V6.3 修复 P1.9 (字体/间距) */
+        .count-row, .total-row { 
+            display: grid; 
+            grid-template-columns: 1fr auto; 
+            gap: 16px; 
+            margin-bottom: var(--spacing-unit); /* 统一间距 */
+            font-size: var(--font-size-base); 
+        }
+        
+        /* V6.3 修复 P1.9 (颜色/字体) */
+        .count-label, .status-row { 
+            color: var(--text-primary) !important; /* 消除灰色 */
+            font-size: var(--font-size-base) !important; /* 统一字体 */
+            text-align: left;
+        }
+        
+        .count-value, .total-value { 
+            color: var(--text-primary);
+            text-align: right; 
+            font-weight: 700; 
+            font-family: 'Consolas', 'Monaco', monospace; 
+            white-space: nowrap; 
+            font-size: var(--font-size-base);
+        }
+
+        .total-row { 
+            margin-top: var(--spacing-unit); 
+            font-weight: bold; 
+            font-size: 14px; /* 总计字体略大 */
+        }
+        
+        .status-row { 
+            margin-top: var(--spacing-unit); 
+            line-height: 1.2;
+        }
+    </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="module" src="/main.js"></script> </body>
+    <div class="content-box">
+        <div class="header-bar">
+            <h4 id="model-name">模型: Loading...</h4>
+            <button id="settings-button">⚙️</button>
+        </div>
+
+        <div class="content-body">
+            <div class="count-row">
+                <span title="文本 = 用户输入 + 模型思考 + 模型输出" class="count-label">文本 (?):</span>
+                <span id="text-count" class="count-value">0</span>
+            </div>
+            
+            <div class="count-row">
+                <span title="文件 = 输入 (用户上传) + 输出 [模型生成 (估算)]" class="count-label">文件 (?):</span>
+                <span id="file-count" class="count-value">0</span>
+            </div>
+        </div>
+
+        <div class="total-row">
+            <span title="（文本 + 文件） / 单窗口上下文上限" class="count-label">总计 (?):</span>
+            <span id="total-display" class="total-value">0 / 1,048,576 (0.0%)</span>
+        </div>
+        
+        <p id="status-message" class="status-row">状态: 正在初始化...</p>
+        
+        <p class="status-row">
+            说明：计数器仅实时统计当前*已加载*的对话。如需统计历史记录，请**手动上/下滚动**以加载更多内容。
+        </p>
+    </div>
+
+    <script type="module" src="/main.js"></script>
+</body>
 </html>

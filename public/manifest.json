@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "1.2",
+  "version": "1.7",
   "description": "__MSG_extensionDescription__",
   "default_locale": "zh_CN",
   "permissions": [
     "storage",
     "sidePanel",
     "scripting",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "offscreen" 
   ],
   "host_permissions": [
     "https://gemini.google.com/*"
@@ -42,7 +43,8 @@
       "resources": [
         "side-panel.html",
         "assets/*",
-        "icons/*"
+        "icons/*",
+        "offscreen.html"
       ],
       "matches": [
         "<all_urls>"

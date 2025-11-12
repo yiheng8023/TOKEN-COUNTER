@@ -7,14 +7,14 @@ A world-class, open-source, 100% local-first token counter for Large Language Mo
 ## 🌟 Features
 
 * **100% Local & Private:** Your text, conversations, and data never leave your browser.
-* **Precision Engine:** Utilizes `@xenova/transformers.js` to run the official Gemma tokenizer directly in your browser for maximum accuracy.
-* **Robust & Resilient (Req 7):** Dynamically fetches DOM configurations to adapt to official UI changes (like Gemini's) without needing a full extension update.
-* **Extensible (Req 5):** Architected for the community. Adding support for new models (like GPT-4, Claude) is straightforward.
-* **Pure & Fast:** No ads, no tracking, no user accounts. Just a clean, fast, "world-class" (Req 3) tool.
+* **Precision Engine:** Utilizes `@xenova/transformers.js` to run the official tokenizer directly in your browser's Web Worker for maximum accuracy.
+* **Robust & Resilient (V5.0 Arch):** Built on a high-performance "Dumb Pipe" Service Worker architecture (V3.4) and a pure Vanilla JS UI, eliminating all React overhead and conflicts.
+* **Extensible:** Architected for the community. Adding new models is straightforward.
+* **Pure & Fast:** No ads, no tracking, no user accounts. Just a clean, fast, "world-class" tool.
 
 ## 🚀 Getting Started (For Developers)
 
-This project is built with Vite, React, TypeScript, and Manifest V3.
+This project is built with **Vite, TypeScript,** and **Vanilla JS (V5.0 Architecture)**.
 
 ### 1. Installation
 
