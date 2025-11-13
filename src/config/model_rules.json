@@ -1,6 +1,6 @@
 {
   "VERSION": "1.11 (Final-11)",
-  "DEFAULT_MODEL_NAME": "Gemini 2.5 Pro",
+  "DEFAULT_MODEL_NAME": "Gemini 2.5 Flash",
   "MODELS": {
     "Gemini 2.5 Pro": {
       "MAX_TOKENS": 1048576,

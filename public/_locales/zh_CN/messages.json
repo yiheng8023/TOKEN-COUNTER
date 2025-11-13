@@ -2,28 +2,25 @@
     "extensionName": {
         "message": "通用 Token 计数器"
     },
-    "extensionDescription": {
-        "message": "世界级、私密、离线的通用 Token 计算工具。"
+    "langZH_CN": {
+        "message": "简体中文"
     },
-    "statusReady": {
-        "message": "就绪"
+    "langZH_TW": {
+        "message": "繁體中文"
     },
-    "statusCalculating": {
-        "message": "计算中..."
+    "langEN": {
+        "message": "English"
     },
-    "statusInitializing": {
-        "message": "初始化中..."
+    "langBrowserDefault": {
+        "message": "浏览器默认"
     },
-    "labelTotal": {
-        "message": "计算总计"
+    "settingsLanguageSaved": {
+        "message": "语言设置已保存。请重新加载扩展或重启浏览器以使更改完全生效。"
     },
-    "labelText": {
-        "message": "文本"
+    "settingsLanguageRemoved": {
+        "message": "语言偏好已清除。请重新加载扩展以跟随浏览器默认语言。"
     },
-    "labelFile": {
-        "message": "文件 (?)"
-    },
-    "statusWaiting": {
-        "message": "等待页面活动..."
+    "labelModel": {
+        "message": "模型"
     }
 }

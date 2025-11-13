@@ -2,28 +2,25 @@
     "extensionName": {
         "message": "Universal Token Counter"
     },
-    "extensionDescription": {
-        "message": "A world-class, private, offline-first universal token calculator."
+    "langZH_CN": {
+        "message": "Simplified Chinese"
     },
-    "statusReady": {
-        "message": "Ready"
+    "langZH_TW": {
+        "message": "Traditional Chinese"
     },
-    "statusCalculating": {
-        "message": "Calculating..."
+    "langEN": {
+        "message": "English"
     },
-    "statusInitializing": {
-        "message": "Initializing..."
+    "langBrowserDefault": {
+        "message": "Browser Default"
     },
-    "labelTotal": {
-        "message": "TOTAL COUNT"
+    "settingsLanguageSaved": {
+        "message": "Language setting saved. Please reload the extension or restart your browser for changes to fully take effect."
     },
-    "labelText": {
-        "message": "Text"
+    "settingsLanguageRemoved": {
+        "message": "Language preference cleared. Please manually reload the extension to follow browser default."
     },
-    "labelFile": {
-        "message": "File (?)"
-    },
-    "statusWaiting": {
-        "message": "Waiting for page activity..."
+    "labelModel": {
+        "message": "Model"
     }
 }
