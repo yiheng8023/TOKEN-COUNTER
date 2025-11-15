@@ -1,25 +1,39 @@
 {
   "manifest_version": 3,
-  "name": "通用 Token 计数器",
-  "version": "2.0",
-  "description": "世界级、私密、离线的通用 Token 计算工具。",
-  "default_locale": "zh_CN",
+  
+  "name": "TOKEN-COUNTER (通用 Token 计数器)",
+  "version": "1.0.0",
+  "description": "A world-class, privacy-first, 100% local token counter. 世界级、私密、离线的通用 Token 计算工具。",
+
   "permissions": [
     "storage",
     "sidePanel",
-    "unlimitedStorage",
-    "debugger" 
+    "scripting",
+    "unlimitedStorage"
   ],
   "host_permissions": [
-    "https://gemini.google.com/*" 
+    "https://gemini.google.com/*"
   ],
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
   "action": {
-    "default_title": "通用 Token 计数器"
+    "default_title": "TOKEN-COUNTER (通用 Token 计数器)"
   },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://gemini.google.com/app*",
+        "https://gemini.google.com/chat*"
+      ],
+      "js": [
+        "gemini_content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
   "side_panel": {
     "default_path": "side-panel.html"
   },
@@ -31,16 +45,10 @@
       "resources": [
         "side-panel.html",
         "assets/*",
-        "icons/*"
+        "icons/*",
+        "gemini_interceptor.js" 
       ],
-      "matches": [
-        "<all_urls>"
-      ]
+      "matches": ["https://gemini.google.com/*"]
     }
-  ],
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  }
+  ]
 }

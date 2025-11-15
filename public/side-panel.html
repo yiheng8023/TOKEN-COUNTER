@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Token Counter Side Panel</title>
+    
+    <style>
+        /* [!! 零配置 V4 (Clean-up) !!] */
+        :root {
+            --bg-color-outer: #ffffff; 
+            --box-bg: #f9f9f9; 
+            --text-primary: #000000;
+            --border-color: #cccccc;
+            --font-size-base: 13px; 
+            --spacing-unit: 8px;
+            --line-height: 1.5; 
+            
+            --color-normal: #28a745; 
+            --color-warning: #ffc107; 
+            --color-danger: #dc3545; 
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color-outer: #1a1a1a; 
+                --box-bg: #282828; 
+                --text-primary: #ffffff;
+                --border-color: #444444;
+
+                --color-normal: #28a745;
+                --color-warning: #ffc107;
+                --color-danger: #dc3545;
+            }
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: calc(var(--spacing-unit) * 1.5);
+            background-color: var(--bg-color-outer);
+            color: var(--text-primary);
+            font-size: var(--font-size-base);
+            line-height: var(--line-height);
+        }
+        .content-box {
+            background: var(--box-bg);
+            border-radius: var(--spacing-unit);
+            border: 1px solid var(--border-color);
+            padding: calc(var(--spacing-unit) * 1.5);
+        }
+
+        .count-row {
+            display: flex;
+            justify-content: space-between;
+            padding: calc(var(--spacing-unit) * 0.75) 0;
+        }
+        
+        /* [!! 关键修改: 移除空的 .count-label 规则 !!] */
+
+        .count-value {
+            font-weight: 500;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: var(--spacing-unit); 
+            margin-top: var(--spacing-unit);
+            border-radius: calc(var(--spacing-unit) / 2); 
+            font-weight: bold;
+            font-size: calc(var(--font-size-base) + 1px);
+            background-color: var(--color-normal); 
+            color: #fff;
+        }
+        .total-row.status-warning { background-color: var(--color-warning); color: #000; }
+        .total-row.status-danger { background-color: var(--color-danger); color: #fff; }
+
+        .app-status-row {
+             display: flex;
+             justify-content: space-between;
+             padding: calc(var(--spacing-unit) * 0.75) 0;
+             margin-top: var(--spacing-unit);
+             border-top: 1px solid var(--border-color);
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="content-box">
+        <div class="count-row">
+            <span class="count-label" id="label-model"></span>
+            <span id="model-name" class="count-value">...</span>
+        </div>
+
+        <div class="count-row">
+            <span class="count-label" id="label-input"></span>
+            <span id="input-total" class="count-value">0</span>
+        </div>
+        <div class="count-row">
+            <span class="count-label" id="label-thinking"></span>
+            <span id="thinking-total" class="count-value">0</span>
+        </div>
+        <div class="count-row">
+            <span class="count-label" id="label-output"></span>
+            <span id="output-total" class="count-value">0</span>
+        </div>
+        <div class="count-row">
+            <span class="count-label" id="label-overhead"></span>
+            <span id="overhead-total" class="count-value">0</span>
+        </div>
+
+        <div class="total-row">
+            <span class="count-label" id="label-total"></span>
+            <span id="total-details" class="count-value">0 / 0 (0%)</span>
+        </div>
+
+        <div class="app-status-row">
+            <span class="count-label" id="label-status"></span>
+            <span id="app-status" class="count-value">--</span>
+        </div>
+    </div>
+    
+    <script type="module" src="/main.js"></script>
+</body>
+</html>

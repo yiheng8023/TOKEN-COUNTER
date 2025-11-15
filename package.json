@@ -5,21 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:vite": "tsc && vite build",
-    "build": "npm run clean:dist && npm run copy:assets && npm run build:vite",
-    "preview": "vite preview",
     
-    "clean:dist": "node cleanDist.js", 
-    "copy:assets": "node copyAssets.js"
+    "build:content": "esbuild src/models/gemini/content.ts --bundle --outfile=dist/gemini_content.js --external:./assets/* --format=esm",
+    "build:vite": "tsc && vite build",
+    "copy:interceptor": "node -e \"require('fs').copyFileSync('src/models/gemini/interceptor.js', 'dist/gemini_interceptor.js')\"",
+    "build": "npm run build:vite && npm run build:content && npm run copy:interceptor", 
+    
+    "preview": "vite preview"
   },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/chrome": "^0.0.268",
     "@types/node": "^24.10.0",
-    "rollup-plugin-copy": "^3.5.0",
+    "esbuild": "^0.21.5",
     "typescript": "^5.5.3",
     "vite": "^5.3.3"
   }

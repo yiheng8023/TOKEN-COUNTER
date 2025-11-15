@@ -1,5 +1,5 @@
 {
-  "VERSION": "1.11 (Final-11)",
+  "VERSION": "1.13 (Final-13)",
   "DEFAULT_MODEL_NAME": "Gemini 2.5 Flash",
   "MODELS": {
     "Gemini 2.5 Pro": {
@@ -10,9 +10,5 @@
       "MAX_TOKENS": 1048576,
       "ALERT_THRESHOLD": 0.8
     }
-  },
-  "COST_RULES": {
-    "THOUGHT_COST_PER_TURN": 500,
-    "FILE_COST_PER_UNIT": 258
   }
 }
